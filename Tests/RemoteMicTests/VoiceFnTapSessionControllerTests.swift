@@ -101,9 +101,11 @@ struct VoiceFnTapSessionControllerTests {
         var disabled = false
         harness.controller.setEnabled(false) { disabled = true }
 
-        #expect(disabled)
+        #expect(!disabled)
         #expect(harness.controller.phase == .idle)
         #expect(harness.functionKeyEvents == [true, false, true, false])
+        #expect(!harness.controller.stopVoice())
+        #expect(disabled)
         harness.scheduler.runAll()
         #expect(harness.functionKeyEvents == [true, false, true, false])
     }
