@@ -1,5 +1,6 @@
 # Bug 记录
 
+- [遥控器重连后语音键点按触发被关闭](./2026-08-22-voice-fn-tap-disabled-after-reconnect.md)
 - [macOS 系统听写未被语音键触发](./2026-08-20-macos-system-dictation-trigger.md)
 - [macOS 1.9.0 签名流程的 Swift Release 冷构建被 180 秒误杀](./2026-08-19-macos-release-swift-build-timeout.md)
 - [组合动作后立即说话导致回眸整段漏记](./2026-08-19-reflections-initial-focus-unavailable.md)
@@ -51,6 +52,7 @@
 
 | 时间 | Bug | 状态 |
 | --- | --- | --- |
+| 2026-08-22 | [遥控器重连后语音键点按触发被关闭](./2026-08-22-voice-fn-tap-disabled-after-reconnect.md) | 候选修复完成，等待本机 RC003 断连重连真机验收 |
 | 2026-08-20 | [macOS 系统听写未被语音键触发](./2026-08-20-macos-system-dictation-trigger.md) | 候选修复完成，等待签名构建与 RC003 真机验收 |
 | 2026-08-19 | [macOS 1.9.0 签名流程的 Swift Release 冷构建被 180 秒误杀](./2026-08-19-macos-release-swift-build-timeout.md) | 代码修复完成，等待受保护 Developer ID canary |
 | 2026-08-19 | [组合动作后立即说话导致回眸整段漏记](./2026-08-19-reflections-initial-focus-unavailable.md) | 候选修复完成，等待真实 Codex 与遥控器验收 |

@@ -403,6 +403,24 @@ check(
         RemoteVoiceFunctionMappingPolicy.remoteVoiceKey,
     "RC003 hardware voice mapping property round-trips"
 )
+check(
+    VoiceFnTapActivationPolicy.state(
+        requested: true,
+        accessibilityTrusted: true,
+        voiceKeyNeutralized: false
+    ) == .waitingForMapping &&
+        VoiceFnTapActivationPolicy.state(
+            requested: true,
+            accessibilityTrusted: true,
+            voiceKeyNeutralized: true
+        ) == .active &&
+        VoiceFnTapActivationPolicy.state(
+            requested: false,
+            accessibilityTrusted: true,
+            voiceKeyNeutralized: true
+        ) == .disabled,
+    "transient RC003 mapping gap preserves the requested Fn tap mode"
+)
 
 check(
     TestToneGenerator.samples(sampleRate: 16_000).count == 16_000 &&

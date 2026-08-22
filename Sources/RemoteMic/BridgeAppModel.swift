@@ -283,6 +283,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private var started = false
     private var terminationObserver: NSObjectProtocol?
     private var completedUpdateHIDRecoveryWorkItem: DispatchWorkItem?
+    private var voiceFnMappingRetryWorkItem: DispatchWorkItem?
+    private var voiceFnMappingRetryAttempt = 0
     private let audioPreparationQueue = DispatchQueue(label: "RemoteMic.audioPreparation", qos: .userInitiated)
     private var audioStartupGeneration: UInt64 = 0
     private var audioDeviceRefreshGeneration: UInt64 = 0
@@ -581,6 +583,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         started = false
         completedUpdateHIDRecoveryWorkItem?.cancel()
         completedUpdateHIDRecoveryWorkItem = nil
+        cancelVoiceFnMappingRecovery(resetAttempt: true)
         audioStartupGeneration &+= 1
         audioDeviceRefreshGeneration &+= 1
         let shouldStopAudioOnPreparationQueue = audioStartupPending
@@ -1233,21 +1236,68 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         var powerKeySuppressed: Bool
         if requestedFnTapMode, KeyboardInjector.isAccessibilityTrusted {
             powerKeySuppressed = applyVoiceFunctionMapping(neutralizeVoiceKey: true)
-            if voiceFunctionMapper.isVoiceKeyNeutralized {
+            let activationState = VoiceFnTapActivationPolicy.state(
+                requested: true,
+                accessibilityTrusted: true,
+                voiceKeyNeutralized: voiceFunctionMapper.isVoiceKeyNeutralized
+            )
+            if activationState == .active {
+                cancelVoiceFnMappingRecovery(resetAttempt: true)
                 voiceFnTapSession.setEnabled(true)
             } else {
-                settings.voiceFnTapModeEnabled = false
                 voiceFnTapSession.setEnabled(false)
                 powerKeySuppressed = applyVoiceFunctionMapping(neutralizeVoiceKey: false)
+                scheduleVoiceFnMappingRecovery()
             }
         } else {
-            if requestedFnTapMode {
-                settings.voiceFnTapModeEnabled = false
-            }
+            cancelVoiceFnMappingRecovery(resetAttempt: !requestedFnTapMode)
             voiceFnTapSession.setEnabled(false)
             powerKeySuppressed = applyVoiceFunctionMapping(neutralizeVoiceKey: false)
         }
         startHIDMonitors(powerKeySuppressed: powerKeySuppressed)
+    }
+
+    private func scheduleVoiceFnMappingRecovery() {
+        guard started,
+              settings.voiceFnTapModeEnabled,
+              voiceFnMappingRetryWorkItem == nil
+        else { return }
+        let delays: [TimeInterval] = [0.25, 0.5, 1, 2, 4]
+        guard voiceFnMappingRetryAttempt < delays.count else {
+            AppLogger.shared.write(
+                "VOICE FN MAPPING retry_exhausted preference_preserved=true"
+            )
+            return
+        }
+        let attempt = voiceFnMappingRetryAttempt + 1
+        let delay = delays[voiceFnMappingRetryAttempt]
+        voiceFnMappingRetryAttempt = attempt
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.voiceFnMappingRetryWorkItem = nil
+            guard self.started,
+                  self.settings.voiceFnTapModeEnabled,
+                  self.isConnected
+            else { return }
+            AppLogger.shared.write(
+                "VOICE FN MAPPING retry attempt=\(attempt) delay_ms=\(Int(delay * 1_000))"
+            )
+            self.applyHIDSettings()
+        }
+        voiceFnMappingRetryWorkItem = workItem
+        AppLogger.shared.write(
+            "VOICE FN MAPPING retry_scheduled attempt=\(attempt) " +
+                "delay_ms=\(Int(delay * 1_000)) preference_preserved=true"
+        )
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: workItem)
+    }
+
+    private func cancelVoiceFnMappingRecovery(resetAttempt: Bool) {
+        voiceFnMappingRetryWorkItem?.cancel()
+        voiceFnMappingRetryWorkItem = nil
+        if resetAttempt {
+            voiceFnMappingRetryAttempt = 0
+        }
     }
 
     private func startHIDMonitors(powerKeySuppressed: Bool) {
@@ -1391,6 +1441,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             enableVoiceFnTapMode()
             return
         }
+        cancelVoiceFnMappingRecovery(resetAttempt: true)
         settings.voiceFnTapModeEnabled = false
         voiceFnTapSession.setEnabled(false) { [weak self] in
             self?.applyHIDSettings()
@@ -1398,24 +1449,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     }
 
     private func enableVoiceFnTapMode() {
-        guard KeyboardInjector.isAccessibilityTrusted else {
-            settings.voiceFnTapModeEnabled = false
-            requestNextHIDPermissionIfNeeded(voiceFnTapModeRequested: true)
-            applyHIDSettings()
-            return
-        }
-
-        var powerKeySuppressed = applyVoiceFunctionMapping(neutralizeVoiceKey: true)
-        guard voiceFunctionMapper.isVoiceKeyNeutralized else {
-            settings.voiceFnTapModeEnabled = false
-            voiceFnTapSession.setEnabled(false)
-            powerKeySuppressed = applyVoiceFunctionMapping(neutralizeVoiceKey: false)
-            startHIDMonitors(powerKeySuppressed: powerKeySuppressed)
-            return
-        }
         settings.voiceFnTapModeEnabled = true
-        voiceFnTapSession.setEnabled(true)
-        startHIDMonitors(powerKeySuppressed: powerKeySuppressed)
+        cancelVoiceFnMappingRecovery(resetAttempt: true)
+        applyHIDSettings()
     }
 
     private func handleVoiceFnTapFailure(_ failure: VoiceFnTapFailure) {
@@ -1585,6 +1621,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             _ = registerBluetoothBridgeIfNeeded(bridge)
             voiceFnTapSession.resume()
             if !hadReadyBridge {
+                cancelVoiceFnMappingRecovery(resetAttempt: true)
                 applyHIDSettings()
             }
         } else {
@@ -1618,6 +1655,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 )
             }
         } else {
+            cancelVoiceFnMappingRecovery(resetAttempt: false)
             voiceFnTapSession.suspend { [weak self] in
                 self?.releaseVirtualAudioOutputIfUnused(reason: "bluetooth_not_ready")
             }

@@ -3322,6 +3322,9 @@ private struct CompatibilityGlassContainer<Content: View>: View {
 
     @ViewBuilder
     var body: some View {
+#if LOCAL_LEGACY_SDK
+        content
+#else
         if #available(macOS 26.0, *), SettingsVisualRenderingPolicy.usesNativeGlass {
             GlassEffectContainer(spacing: spacing) {
                 content
@@ -3329,6 +3332,7 @@ private struct CompatibilityGlassContainer<Content: View>: View {
         } else {
             content
         }
+#endif
     }
 }
 
@@ -3337,6 +3341,14 @@ private struct CompatibilityButtonStyleModifier: ViewModifier {
 
     @ViewBuilder
     func body(content: Content) -> some View {
+#if LOCAL_LEGACY_SDK
+        switch style {
+        case .standard:
+            content.buttonStyle(.bordered)
+        case .prominent:
+            content.buttonStyle(.borderedProminent)
+        }
+#else
         if #available(macOS 26.0, *), SettingsVisualRenderingPolicy.usesNativeGlass {
             switch style {
             case .standard:
@@ -3352,17 +3364,22 @@ private struct CompatibilityButtonStyleModifier: ViewModifier {
                 content.buttonStyle(.borderedProminent)
             }
         }
+#endif
     }
 }
 
 private struct CompatibilityScrollEdgeEffectModifier: ViewModifier {
     @ViewBuilder
     func body(content: Content) -> some View {
+#if LOCAL_LEGACY_SDK
+        content
+#else
         if #available(macOS 26.0, *), SettingsVisualRenderingPolicy.usesNativeGlass {
             content.scrollEdgeEffectStyle(.soft, for: .top)
         } else {
             content
         }
+#endif
     }
 }
 
@@ -3397,6 +3414,16 @@ private struct CompatibilityTintedGlassModifier<GlassShape: Shape>: ViewModifier
 
     @ViewBuilder
     func body(content: Content) -> some View {
+#if LOCAL_LEGACY_SDK
+        content
+            .background(tint, in: shape)
+            .overlay(
+                shape.stroke(
+                    Color(nsColor: .separatorColor).opacity(0.45),
+                    lineWidth: 1
+                )
+            )
+#else
         if #available(macOS 26.0, *), SettingsVisualRenderingPolicy.usesNativeGlass {
             if interactive {
                 content.glassEffect(.clear.tint(tint).interactive(), in: shape)
@@ -3413,6 +3440,7 @@ private struct CompatibilityTintedGlassModifier<GlassShape: Shape>: ViewModifier
                     )
                 )
         }
+#endif
     }
 }
 
@@ -3466,6 +3494,17 @@ struct GlassPanel<Content: View>: View {
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+#if LOCAL_LEGACY_SDK
+        content
+            .padding(16)
+            .background(.regularMaterial, in: shape)
+            .overlay(
+                shape.stroke(
+                    Color(nsColor: .separatorColor).opacity(0.45),
+                    lineWidth: 1
+                )
+            )
+#else
         if #available(macOS 26.0, *), SettingsVisualRenderingPolicy.usesNativeGlass {
             content
                 .padding(16)
@@ -3491,6 +3530,7 @@ struct GlassPanel<Content: View>: View {
                     )
                 )
         }
+#endif
     }
 }
 

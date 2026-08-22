@@ -33,9 +33,12 @@ Branch `codex/system-dictation-trigger`, based on SayAll 1.9.3 build 125.
    - Expected: SayAll requests permission and does not inject the shortcut until granted.
 2. Disconnect during speech, reconnect, and retry.
    - Expected: any pressed synthetic key is released and the next session works.
-3. Disable tap-toggle mode during speech.
+3. Leave the remote idle until it disconnects, then reconnect without touching the tap-toggle switch.
+   - Expected: the saved switch remains on. A temporary HID enumeration gap may log bounded mapping retries, but the first voice press after recovery still sends Fn-D and inserts text.
+   - Failure: the switch turns off, no retry occurs after `matched=0`, or the user must manually enable the switch again.
+4. Disable tap-toggle mode during speech.
    - Expected: the current pair is safely completed without reopening Dictation.
-4. Repeat with the iPhone and web control methods.
+5. Repeat with the iPhone and web control methods.
    - Expected: Fn-D starts before audio and stops only after drain.
 
 ## Stable Regression
@@ -48,6 +51,8 @@ Branch `codex/system-dictation-trigger`, based on SayAll 1.9.3 build 125.
 ## Logs
 
 Collect `~/Library/Logs/RemoteMic/runtime.log`. A passing system Dictation session must show the system-dictation trigger route, non-zero PCM samples, audio drain, and a paired closing trigger without injection failure.
+
+After a reconnect-side HID enumeration gap, the log may show `VOICE FN MAPPING retry_scheduled` and bounded `retry` events. It must eventually return to `neutralized=true` without changing the saved tap-toggle preference to false.
 
 ## Verification Boundary
 
