@@ -70,3 +70,11 @@ Unit tests and builds prove event generation and lifecycle boundaries only. They
 - Every session logged a successful opening Fn-D tap, audio drain to zero pending buffers, and a successful closing Fn-D tap.
 - The onboarding flow advanced from `voiceTest` to `controls`, with no confirmed physical-keyboard-input event, and the tester confirmed that dictated text appeared normally.
 - Result: local real-hardware journey passed. Repeat on a Developer ID signed and notarized release candidate before distribution.
+
+## Codex Stop Acceptance — 2026-08-23
+
+- Build: isolated local development app at source commit `ae466e3`, using bundle identifier `com.dinga1981.RemoteMic.DictationTest`.
+- Five consecutive Codex sessions received 117,840, 116,400, 92,640, 81,120, and 75,840 samples with zero enqueue failures.
+- Every session started with Fn-D, drained pending audio to zero, and logged one successful unmodified Escape stop with `target=codex`.
+- The tester confirmed Dictation exited after release and consecutive voice input remained usable; no text clearing or automatic submission was observed.
+- Result: local Codex + RC003 journey passed. Keep the non-Codex Fn-D stable regression in release-candidate acceptance.

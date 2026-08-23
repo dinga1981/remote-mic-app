@@ -1,7 +1,7 @@
 # Codex Keeps macOS Dictation Active After Voice-Key Release
 
 - 时间：2026-08-23
-- 状态：候选修复完成，等待本机 Codex + RC003 真机验收
+- 状态：本机 Codex + RC003 真机验收通过
 - 影响范围：本机开发版、macOS 26、Codex `com.openai.codex`、RC003、macOS 系统听写
 - 功能点：语音键松开、音频 drain、系统听写停止动作
 - 简单描述：大多数应用在遥控器语音键松开后正常退出系统听写；Codex 输入框仍保持听写状态。
@@ -41,8 +41,9 @@ Codex 与 macOS 系统听写的停止交互不同于当前已验证的普通输�
 - 生产目标在本机旧 SDK 兼容分支下完整编译并链接成功。
 - Swift 语法解析和 `git diff --check`：通过。
 - Swift Testing 测试源已增加覆盖，但本机旧 SDK 缺少 `Testing` 模块，无法执行；生产目标在测试构建过程中已成功编译。该工具链边界与 2026-08-22 本机开发版记录一致。
-- 真实 Codex + RC003 候选 App 的“按住说话 → 松开 → Esc 自动结束 → 连续第二次仍可用”仍待验收。
+- 本机 Codex + RC003 验收通过：连续五次会话（91～95）分别接收 117,840、116,400、92,640、81,120 和 75,840 个样本，入队失败均为零；每次都先完成音频 drain，再记录一次 `key=escape phase=stop target=codex success=true`。
+- 测试者确认 Codex 中听写会在松键后正常退出，连续语音仍可使用，未出现文字清除或自动提交。
 
 ## Verification Boundary
 
-自动化可以证明 Codex 覆盖替代关闭 Fn-D、仅执行一次并在失败时关闭会话，不能证明 macOS 听写浮层实际接收 Esc，也不能证明 Esc 不会在听写已经异常退出时影响 Codex 页面。必须在本机开发版中对 Codex 连续执行至少三次真实语音，并对任意一个普通应用执行稳定基线。
+自动化可以证明 Codex 覆盖替代关闭 Fn-D、仅执行一次并在失败时关闭会话，不能单独证明 macOS 听写浮层实际接收 Esc，也不能证明 Esc 不会在听写已经异常退出时影响 Codex 页面。本机开发版已用 Codex 连续五次真实语音覆盖该系统边界；发布候选仍需重复 Codex 路径并执行普通应用稳定基线。

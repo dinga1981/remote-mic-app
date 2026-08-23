@@ -53,7 +53,7 @@
 
 | 时间 | Bug | 状态 |
 | --- | --- | --- |
-| 2026-08-23 | [Codex 松开语音键后系统听写不退出](./2026-08-23-codex-system-dictation-does-not-stop.md) | 候选修复完成，等待本机 Codex + RC003 真机验收 |
+| 2026-08-23 | [Codex 松开语音键后系统听写不退出](./2026-08-23-codex-system-dictation-does-not-stop.md) | 本机 Codex + RC003 连续五次真机验收通过 |
 | 2026-08-22 | [遥控器重连后语音键点按触发被关闭](./2026-08-22-voice-fn-tap-disabled-after-reconnect.md) | 候选修复完成，等待本机 RC003 断连重连真机验收 |
 | 2026-08-20 | [macOS 系统听写未被语音键触发](./2026-08-20-macos-system-dictation-trigger.md) | 候选修复完成，等待签名构建与 RC003 真机验收 |
 | 2026-08-19 | [macOS 1.9.0 签名流程的 Swift Release 冷构建被 180 秒误杀](./2026-08-19-macos-release-swift-build-timeout.md) | 代码修复完成，等待受保护 Developer ID canary |
