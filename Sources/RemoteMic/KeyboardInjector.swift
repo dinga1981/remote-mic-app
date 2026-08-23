@@ -71,6 +71,7 @@ enum KeyboardInjector {
     static let contextualMenuKeyCode: CGKeyCode = 110
     static let functionKeyCode: CGKeyCode = 63
     static let systemDictationKeyCode: CGKeyCode = 2
+    static let escapeKeyCode: CGKeyCode = 53
     private static let focusRequests = ApplicationFocusRequestGate()
     private static let focusQueue = DispatchQueue(
         label: "RemoteMic.application-focus",
@@ -122,6 +123,17 @@ enum KeyboardInjector {
             isPressed,
             .maskSecondaryFn
         )
+    }
+
+    @discardableResult
+    static func tapEscape(
+        accessibilityTrusted: () -> Bool = { isAccessibilityTrusted },
+        keyStatePoster: KeyStatePoster = postKeyState
+    ) -> Bool {
+        guard accessibilityTrusted() else { return false }
+        let down = keyStatePoster(escapeKeyCode, true, [])
+        let up = keyStatePoster(escapeKeyCode, false, [])
+        return down && up
     }
 
     @discardableResult

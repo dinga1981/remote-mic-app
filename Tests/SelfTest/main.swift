@@ -587,6 +587,39 @@ check(
     "macOS Dictation activation wait closes its paired trigger when disabled"
 )
 
+var codexStopScheduledOperations: [() -> Void] = []
+var codexStopFunctionEvents: [Bool] = []
+var codexStopDrainCompletion: (() -> Void)?
+var codexEscapeStopCount = 0
+let codexStopController = VoiceFnTapSessionController(
+    stopTriggerOverride: {
+        codexEscapeStopCount += 1
+        return true
+    },
+    schedule: { _, operation in
+        codexStopScheduledOperations.append(operation)
+        return VoiceFnTapScheduledTask {}
+    },
+    setFunctionKeyPressed: { pressed in
+        codexStopFunctionEvents.append(pressed)
+        return true
+    },
+    enqueueAudio: { _ in },
+    drainAudio: { codexStopDrainCompletion = $0 },
+    onFailure: { _ in }
+)
+codexStopController.setEnabled(true)
+_ = codexStopController.startVoice()
+codexStopScheduledOperations.removeFirst()()
+codexStopScheduledOperations.removeFirst()()
+_ = codexStopController.stopVoice()
+codexStopDrainCompletion?()
+check(
+    codexStopFunctionEvents == [true, false] && codexEscapeStopCount == 1 &&
+        codexStopController.phase == .idle,
+    "Codex system Dictation stop uses the app-specific Escape override"
+)
+
 print("RESULT passed=\(passed) failed=\(failed)")
 if failed > 0 {
     exit(1)

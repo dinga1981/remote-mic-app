@@ -45,6 +45,7 @@ final class VoiceFnTapSessionController {
     typealias AudioEnqueuer = ([Int16]) -> Void
     typealias AudioDrainer = (@escaping () -> Void) -> Void
     typealias PostTapActivationDelay = () -> TimeInterval
+    typealias StopTriggerOverride = () -> Bool?
     typealias DestinationReadiness = (
         @escaping (VoiceInputDestinationWaitResult) -> Void
     ) -> VoiceInputDestinationWait
@@ -59,6 +60,7 @@ final class VoiceFnTapSessionController {
     private let maximumPreRollSampleCount: Int
     private let schedule: Scheduler
     private let postTapActivationDelay: PostTapActivationDelay
+    private let stopTriggerOverride: StopTriggerOverride
     private let destinationReadiness: DestinationReadiness
     private let setFunctionKeyPressed: FunctionKeySetter
     private let enqueueAudio: AudioEnqueuer
@@ -87,6 +89,7 @@ final class VoiceFnTapSessionController {
         tapDuration: TimeInterval = 0.12,
         maximumPreRollSampleCount: Int = 80_000,
         postTapActivationDelay: @escaping PostTapActivationDelay = { 0 },
+        stopTriggerOverride: @escaping StopTriggerOverride = { nil },
         schedule: @escaping Scheduler = VoiceFnTapScheduledTask.mainQueue,
         destinationReadiness: @escaping DestinationReadiness = { _ in .immediate },
         setFunctionKeyPressed: @escaping FunctionKeySetter,
@@ -98,6 +101,7 @@ final class VoiceFnTapSessionController {
         self.tapDuration = tapDuration
         self.maximumPreRollSampleCount = maximumPreRollSampleCount
         self.postTapActivationDelay = postTapActivationDelay
+        self.stopTriggerOverride = stopTriggerOverride
         self.schedule = schedule
         self.destinationReadiness = destinationReadiness
         self.setFunctionKeyPressed = setFunctionKeyPressed
@@ -216,7 +220,7 @@ final class VoiceFnTapSessionController {
         case .idle:
             needsStopTap = false
         }
-        if needsStopTap, !postImmediateFunctionKeyTap() {
+        if needsStopTap, !postImmediateStopTrigger() {
             onFailure(.stopTapFailed)
         }
         resetSessionState()
@@ -324,6 +328,14 @@ final class VoiceFnTapSessionController {
     private func beginStopTap(generation sessionGeneration: UInt64) {
         guard phase == .draining(sessionGeneration), generation == sessionGeneration else { return }
         phase = .stopping(sessionGeneration)
+        if let success = stopTriggerOverride() {
+            if success {
+                finishSession()
+            } else {
+                fail(.stopTapFailed)
+            }
+            return
+        }
         performFunctionKeyTap(generation: sessionGeneration) { [weak self] success in
             guard let self,
                   self.phase == .stopping(sessionGeneration),
@@ -373,7 +385,7 @@ final class VoiceFnTapSessionController {
             generation &+= 1
             cancelScheduledTasks()
             let completedStartTap = releaseFunctionKeyIfNeeded()
-            if (openingTapCompleted || completedStartTap), !postImmediateFunctionKeyTap() {
+            if (openingTapCompleted || completedStartTap), !postImmediateStopTrigger() {
                 onFailure(.stopTapFailed)
             }
             resetSessionState()
@@ -434,6 +446,10 @@ final class VoiceFnTapSessionController {
         let down = setFunctionKeyPressed(true)
         let up = setFunctionKeyPressed(false)
         return down && up
+    }
+
+    private func postImmediateStopTrigger() -> Bool {
+        stopTriggerOverride() ?? postImmediateFunctionKeyTap()
     }
 
     private func appendPreRoll(_ samples: [Int16], toPendingVoice: Bool) {

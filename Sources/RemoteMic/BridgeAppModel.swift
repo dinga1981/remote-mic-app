@@ -206,6 +206,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         postTapActivationDelay: { [weak self] in
             self?.settings.onboardingVoiceTool.usesSystemDictationShortcut == true ? 0.45 : 0
         },
+        stopTriggerOverride: { [weak self] in
+            self?.postCodexSystemDictationStopIfNeeded()
+        },
         destinationReadiness: { [weak self] completion in
             self?.voiceInputDestinationCoordinator.waitUntilReady(completion: completion) ?? .immediate
         },
@@ -2750,5 +2753,17 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             return success
         }
         return KeyboardInjector.setFunctionKeyPressed(isPressed)
+    }
+
+    private func postCodexSystemDictationStopIfNeeded() -> Bool? {
+        guard settings.onboardingVoiceTool.usesSystemDictationShortcut,
+              NSWorkspace.shared.frontmostApplication?.bundleIdentifier ==
+                PresetApplication.codex.bundleIdentifier
+        else { return nil }
+        let success = KeyboardInjector.tapEscape()
+        AppLogger.shared.write(
+            "VOICE SYSTEM DICTATION key=escape phase=stop target=codex success=\(success)"
+        )
+        return success
     }
 }

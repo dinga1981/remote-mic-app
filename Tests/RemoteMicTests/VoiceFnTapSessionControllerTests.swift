@@ -72,6 +72,32 @@ struct VoiceFnTapSessionControllerTests {
         #expect(harness.controller.phase == .idle)
     }
 
+    @Test func appSpecificStopOverrideReplacesTheClosingFunctionTap() {
+        let harness = Harness(stopTriggerResults: [true])
+        harness.controller.setEnabled(true)
+        harness.startActiveSession()
+
+        #expect(harness.controller.stopVoice())
+        harness.completeNextDrain()
+
+        #expect(harness.stopTriggerCalls == 1)
+        #expect(harness.functionKeyEvents == [true, false])
+        #expect(harness.controller.phase == .idle)
+    }
+
+    @Test func failedAppSpecificStopOverrideFailsClosed() {
+        let harness = Harness(stopTriggerResults: [false])
+        harness.controller.setEnabled(true)
+        harness.startActiveSession()
+
+        #expect(harness.controller.stopVoice())
+        harness.completeNextDrain()
+
+        #expect(harness.stopTriggerCalls == 1)
+        #expect(harness.failures == [.stopTapFailed])
+        #expect(harness.controller.phase == .idle)
+    }
+
     @Test func buffersUntilPostTapActivationDelayCompletes() {
         let harness = Harness(postTapActivationDelay: 0.45)
         harness.controller.setEnabled(true)
@@ -205,9 +231,15 @@ private final class Harness {
     var enqueuedAudio: [[Int16]] = []
     var drainCompletions: [() -> Void] = []
     var failures: [VoiceFnTapFailure] = []
+    var stopTriggerResults: [Bool?]
+    var stopTriggerCalls = 0
     let postTapActivationDelay: TimeInterval
     lazy var controller = VoiceFnTapSessionController(
         postTapActivationDelay: { [unowned self] in self.postTapActivationDelay },
+        stopTriggerOverride: { [unowned self] in
+            stopTriggerCalls += 1
+            return stopTriggerResults.isEmpty ? nil : stopTriggerResults.removeFirst()
+        },
         schedule: scheduler.schedule,
         setFunctionKeyPressed: { [unowned self] pressed in
             functionKeyEvents.append(pressed)
@@ -224,8 +256,13 @@ private final class Harness {
         }
     )
 
-    init(functionKeyResults: [Bool] = [], postTapActivationDelay: TimeInterval = 0) {
+    init(
+        functionKeyResults: [Bool] = [],
+        stopTriggerResults: [Bool?] = [],
+        postTapActivationDelay: TimeInterval = 0
+    ) {
         self.functionKeyResults = functionKeyResults
+        self.stopTriggerResults = stopTriggerResults
         self.postTapActivationDelay = postTapActivationDelay
     }
 

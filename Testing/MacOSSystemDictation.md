@@ -40,10 +40,14 @@ Branch `codex/system-dictation-trigger`, based on SayAll 1.9.3 build 125.
    - Expected: the current pair is safely completed without reopening Dictation.
 5. Repeat with the iPhone and web control methods.
    - Expected: Fn-D starts before audio and stops only after drain.
+6. Repeat three consecutive sessions in the Codex composer.
+   - Expected: Fn-D starts Dictation; after release and drain, one unmodified Escape stops Dictation. The next session starts normally and the message is not submitted.
+   - Failure: Dictation remains active, Escape reaches Codex after Dictation has already closed, a draft is cleared, or a later session is ignored.
 
 ## Stable Regression
 
 - Typeless still receives one plain Fn tap at start and one at stop.
+- macOS Dictation in non-Codex applications still receives the existing Fn-D stop trigger; the Escape override is limited to frontmost `com.openai.codex`.
 - Doubao, WeChat Input Method, and Other Voice Tool retain their existing Fn behavior.
 - Normal button mappings, audio test tone, RC003 connection, and `MiRemoteV 2ch` output still work.
 - Settings pages remain readable at 800 x 650 in light and dark appearance.
